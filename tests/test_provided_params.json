@@ -15,6 +15,6 @@
   "files": [],
   "metadata": {
     "description": "Provided runtime required-data request parameters",
-    "expected_status": "success"
+    "expected_status": "failure"
   }
 }

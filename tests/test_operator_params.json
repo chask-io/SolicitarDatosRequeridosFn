@@ -4,13 +4,13 @@
   "test_type": "operator_params",
   "args": {},
   "widget_params": {},
-  "prompt": "Llama a SolicitarDatosRequeridosFn con reason='SKU inválido', source_node_id='lookup-node', authorized_root_node_ids=['lookup-node'], idempotency_key='required-data:operator:sku:v1' y fields=[{'field_id':'sku_resolution','label':'Reemplazo','type':'seleccion','required':true,'options':['replace','remove']}].",
+  "prompt": "Llama a SolicitarDatosRequeridosFn y genera un único tool call con todos los parámetros requeridos. Usa exactamente estos valores: reason = \"SKU inválido\"; source_node_id = \"lookup-node\"; authorized_root_node_ids = [\"lookup-node\"]; idempotency_key = \"required-data:operator:sku:v1\"; fields = [{\"field_id\": \"sku_resolution\", \"label\": \"Reemplazo\", \"type\": \"seleccion\", \"required\": true, \"options\": [\"replace\", \"remove\"]}]. No omitas source_node_id ni ningún otro parámetro requerido.",
   "extra_params": {
     "is_operator_params_test": true
   },
   "files": [],
   "metadata": {
     "description": "Operator generates a runtime required-data request",
-    "expected_status": "success"
+    "expected_status": "failure"
   }
 }
