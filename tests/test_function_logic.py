@@ -60,6 +60,21 @@ def test_build_payload_normalizes_types_and_resume_context():
     assert payload["pipeline_id"] == 11233
 
 
+def test_build_payload_accepts_documented_sku_example():
+    args = valid_args()
+    args["fields"] = [
+        {"field_id": "sku_1", "label": "SKU 1", "type": "texto", "required": True},
+        {"field_id": "sku_3", "label": "SKU 3", "type": "texto", "required": True},
+    ]
+
+    payload = FunctionBackend(event(args))._build_payload(args)
+
+    assert [(field["field_id"], field["type"]) for field in payload["fields"]] == [
+        ("sku_1", "texto"),
+        ("sku_3", "texto"),
+    ]
+
+
 @pytest.mark.parametrize("key", ["reason", "source_node_id", "idempotency_key"])
 def test_required_strings_are_rejected(key):
     args = valid_args()

@@ -18,14 +18,30 @@ function:
         description: Motivo claro por el que el flujo necesita estos datos.
       - name: fields
         type: array
-        description: Campos que el usuario debe completar; incluya al menos un campo requerido.
+        description: >
+          Campos que el usuario debe completar. Cada campo debe incluir field_id,
+          label, type y required; incluya al menos un campo requerido. Los valores
+          permitidos para type son texto, numero, archivo, lista, seleccion y
+          booleano. Use field_id como identificador canónico; no use name. Ejemplo
+          válido: [{field_id: sku_1, label: SKU 1, type: texto, required: true},
+          {field_id: sku_3, label: SKU 3, type: texto, required: true}].
         items:
           type: object
+          required: [field_id, label, type, required]
           properties:
-            field_id: {type: string}
-            label: {type: string}
-            type: {type: string, enum: [texto, numero, archivo, lista, seleccion, booleano]}
-            required: {type: boolean}
+            field_id:
+              type: string
+              description: Identificador canónico del campo; no use name.
+            label:
+              type: string
+              description: Etiqueta visible para el usuario.
+            type:
+              type: string
+              enum: [texto, numero, archivo, lista, seleccion, booleano]
+              description: Tipo aceptado del campo.
+            required:
+              type: boolean
+              description: Indica si el usuario debe completar el campo.
             description: {type: string}
             example: {type: string}
             options: {type: array}
