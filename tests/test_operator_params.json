@@ -4,13 +4,13 @@
   "test_type": "operator_params",
   "args": {},
   "widget_params": {},
-  "prompt": "Llama a SolicitarDatosRequeridosFn y genera un único tool call con todos los parámetros requeridos. Usa exactamente estos valores: reason = \"SKU inválido\"; source_node_id = \"lookup-node\"; authorized_root_node_ids = [\"lookup-node\"]; idempotency_key = \"required-data:operator:sku:v1\"; fields = [{\"field_id\": \"sku_resolution\", \"label\": \"Reemplazo\", \"type\": \"seleccion\", \"required\": true, \"options\": [\"replace\", \"remove\"]}]. No omitas source_node_id ni ningún otro parámetro requerido.",
+  "prompt": "Llama a SolicitarDatosRequeridosFn y genera un único tool call con todos los parámetros requeridos. Debes enviar exactamente estos valores, incluso el valor inválido: reason = \"SKU inválido\"; source_node_id = \"\" (cadena vacía, no la corrijas ni la omitas); authorized_root_node_ids = [\"lookup-node\"]; idempotency_key = \"required-data:operator:invalid-source:v1\"; fields = [{\"field_id\": \"sku_resolution\", \"label\": \"Reemplazo\", \"type\": \"seleccion\", \"required\": true, \"options\": [\"replace\", \"remove\"]}]. Esta prueba debe enviar source_node_id vacío para que la función rechace los argumentos antes de llamar al API.",
   "extra_params": {
     "is_operator_params_test": true
   },
   "files": [],
   "metadata": {
-    "description": "Operator generates a runtime required-data request",
+    "description": "Operator sends an invalid request rejected before the runtime API call",
     "expected_status": "failure"
   }
 }

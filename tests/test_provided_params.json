@@ -4,7 +4,7 @@
   "test_type": "provided_params",
   "args": {
     "reason": "SKU inválido",
-    "source_node_id": "lookup-node",
+    "source_node_id": "",
     "authorized_root_node_ids": ["lookup-node"],
     "idempotency_key": "required-data:test:sku:v1",
     "fields": [{"field_id": "sku_resolution", "label": "Reemplazo", "type": "seleccion", "required": true, "options": ["replace", "remove"]}]
@@ -14,7 +14,7 @@
   "extra_params": {},
   "files": [],
   "metadata": {
-    "description": "Provided runtime required-data request parameters",
+    "description": "Rejects an invalid request before the runtime API call",
     "expected_status": "failure"
   }
 }
