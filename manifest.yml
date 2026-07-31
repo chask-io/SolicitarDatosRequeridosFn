@@ -1,0 +1,61 @@
+function:
+  name: SolicitarDatosRequeridosFn
+  runtime: python3.12
+  handler: handler.lambda_handler
+  description: >
+    Solicita datos faltantes durante la ejecución de un flujo. Usa esta función
+    cuando un nodo necesita información del usuario para continuar.
+  timeout: 120
+  memory_size: 256
+  type: function
+  layers:
+    - foundationMinimal
+    - foundationApi
+  parameters:
+    required:
+      - name: reason
+        type: string
+        description: Motivo claro por el que el flujo necesita estos datos.
+      - name: fields
+        type: array
+        description: Campos que el usuario debe completar; incluya al menos un campo requerido.
+        items:
+          type: object
+          properties:
+            field_id: {type: string}
+            label: {type: string}
+            type: {type: string, enum: [texto, numero, archivo, lista, seleccion, booleano]}
+            required: {type: boolean}
+            description: {type: string}
+            example: {type: string}
+            options: {type: array}
+            required_when: {type: object}
+            aliases: {type: array, items: {type: string}}
+            validation_hints: {type: object}
+      - name: source_node_id
+        type: string
+        description: Identificador del nodo que detectó la falta de datos.
+      - name: authorized_root_node_ids
+        type: array
+        description: Identificadores de nodos raíz que podrán revalidarse después.
+        items:
+          type: string
+      - name: idempotency_key
+        type: string
+        description: Clave estable para evitar solicitudes duplicadas en el mismo intento.
+    optional:
+      - name: schema_revision
+        type: integer
+        description: Revisión del esquema de datos requeridos.
+        default: 1
+      - name: contract_version
+        type: integer
+        description: Versión del contrato runtime de datos requeridos.
+        default: 1
+  widget:
+    enabled: false
+    type: dynamic_widget
+    params: []
+  testing:
+    handles_files: false
+    produces_files: false

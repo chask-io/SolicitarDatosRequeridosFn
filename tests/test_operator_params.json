@@ -1,0 +1,5 @@
+{
+  "function_name": "SolicitarDatosRequeridosFn",
+  "test_type": "operator_params",
+  "prompt": "Llama a SolicitarDatosRequeridosFn con reason='SKU inválido', source_node_id='lookup-node', authorized_root_node_ids=['lookup-node'], idempotency_key='required-data:operator:sku:v1' y fields=[{'field_id':'sku_resolution','label':'Reemplazo','type':'seleccion','required':true,'options':['replace','remove']}]."
+}
