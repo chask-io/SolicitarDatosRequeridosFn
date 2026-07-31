@@ -9,6 +9,13 @@ import pytest
 
 def _install_handler_import_stubs(monkeypatch):
     """Load the infrastructure handler without requiring Lambda layers locally."""
+    pipeline_requests = types.ModuleType("api.pipeline_requests")
+    pipeline_requests.pipeline_api_manager = SimpleNamespace(call=None)
+    api_package = types.ModuleType("api")
+    api_package.pipeline_requests = pipeline_requests
+    monkeypatch.setitem(sys.modules, "api", api_package)
+    monkeypatch.setitem(sys.modules, "api.pipeline_requests", pipeline_requests)
+
     models = types.ModuleType("chask_foundation.backend.models")
 
     class ValidatedEvent:
