@@ -15,7 +15,7 @@
   "files": [],
   "metadata": {
     "description": "Rejects an invalid request before the runtime API call",
-    "expected_status": "failure",
+    "expected_status": "error",
     "expected_error": "source_node_id is required"
   }
 }
