@@ -11,6 +11,7 @@
   "files": [],
   "metadata": {
     "description": "Operator sends an invalid request rejected before the runtime API call",
-    "expected_status": "failure"
+    "expected_status": "failure",
+    "expected_error": "source_node_id is required"
   }
 }
