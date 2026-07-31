@@ -1,7 +1,27 @@
 import json
+import sys
+import types
 from types import SimpleNamespace
 
 import pytest
+
+# The API and foundation layers are injected by Lambda. Stub only their import
+# boundary so these unit tests can run without installing deployment layers.
+pipeline_requests = types.ModuleType("api.pipeline_requests")
+pipeline_requests.pipeline_api_manager = SimpleNamespace(call=None)
+api_package = types.ModuleType("api")
+api_package.pipeline_requests = pipeline_requests
+foundation_models = types.ModuleType("chask_foundation.backend.models")
+foundation_models.OrchestrationEvent = object
+foundation_backend = types.ModuleType("chask_foundation.backend")
+foundation_backend.models = foundation_models
+foundation_package = types.ModuleType("chask_foundation")
+foundation_package.backend = foundation_backend
+sys.modules.setdefault("api", api_package)
+sys.modules.setdefault("api.pipeline_requests", pipeline_requests)
+sys.modules.setdefault("chask_foundation", foundation_package)
+sys.modules.setdefault("chask_foundation.backend", foundation_backend)
+sys.modules.setdefault("chask_foundation.backend.models", foundation_models)
 
 from src.backend.function_logic import FunctionBackend, RequestValidationError
 
