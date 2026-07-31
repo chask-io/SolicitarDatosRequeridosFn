@@ -26,14 +26,20 @@ sys.modules.setdefault("chask_foundation.backend.models", foundation_models)
 from src.backend.function_logic import FunctionBackend, RequestValidationError
 
 
-def event(args, pipeline_id=11233):
+def event(args, pipeline_id=11233, simulation=None):
+    extra_params = {
+        "pipeline_id": pipeline_id,
+        "tool_calls": [{"id": "call-1", "args": args}],
+    }
+    if simulation is not None:
+        extra_params["_simulation"] = simulation
     return SimpleNamespace(
         orchestration_session_uuid="session-uuid",
         event_id="turn-uuid",
         pipeline_id=pipeline_id,
         access_token="token",
         organization=SimpleNamespace(organization_id="org-uuid"),
-        extra_params={"pipeline_id": pipeline_id, "tool_calls": [{"id": "call-1", "args": args}]},
+        extra_params=extra_params,
     )
 
 
@@ -84,7 +90,33 @@ def test_selection_needs_options_and_condition_is_validated():
 def test_process_request_calls_existing_endpoint(monkeypatch):
     calls = []
     monkeypatch.setattr("src.backend.function_logic.pipeline_api_manager.call", lambda *a, **kw: calls.append((a, kw)) or {"request": {"required_data_request_uuid": "req-1"}})
-    result = FunctionBackend(event(valid_args())).process_request()
+    simulation = {"is_simulation": True, "scenario_id": "scenario-1", "run_id": "run-1"}
+    result = FunctionBackend(event(valid_args(), simulation=simulation)).process_request()
     assert json.loads(result)["request"]["required_data_request_uuid"] == "req-1"
     assert calls[0][0] == ("create_runtime_required_data_request",)
-    assert calls[0][1]["access_token"] == "token"
+    assert calls[0][1] == {
+        "access_token": "token",
+        "organization_id": "org-uuid",
+        "pipeline_id": 11233,
+        "orchestration_session_uuid": "session-uuid",
+        "source_node_id": "lookup-node",
+        "reason": "SKU inválido",
+        "fields": [{
+            "field_id": "sku_resolution",
+            "label": "Reemplazo",
+            "type": "seleccion",
+            "required": True,
+            "description": None,
+            "example": None,
+            "options": ["replace", "remove"],
+            "required_when": None,
+            "aliases": [],
+            "validation_hints": {},
+        }],
+        "authorized_root_node_ids": ["lookup-node"],
+        "resume_context": {"operator_turn_uuid": "turn-uuid", "tool_call_id": "call-1"},
+        "idempotency_key": "required-data:turn-uuid:sku:v1",
+        "schema_revision": 1,
+        "contract_version": 1,
+        "_simulation": simulation,
+    }

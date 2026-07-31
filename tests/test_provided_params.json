@@ -1,5 +1,6 @@
 {
   "function_name": "SolicitarDatosRequeridosFn",
+  "event_type": "function_call",
   "test_type": "provided_params",
   "args": {
     "reason": "SKU inválido",
@@ -8,5 +9,12 @@
     "idempotency_key": "required-data:test:sku:v1",
     "fields": [{"field_id": "sku_resolution", "label": "Reemplazo", "type": "seleccion", "required": true, "options": ["replace", "remove"]}]
   },
-  "prompt": "Solicita la resolución del SKU inválido durante la ejecución."
+  "widget_params": {},
+  "prompt": "Solicita la resolución del SKU inválido durante la ejecución.",
+  "extra_params": {},
+  "files": [],
+  "metadata": {
+    "description": "Provided runtime required-data request parameters",
+    "expected_status": "success"
+  }
 }
