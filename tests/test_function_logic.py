@@ -102,6 +102,25 @@ def test_fields_need_a_required_field():
         FunctionBackend(event(args))._build_payload(args)
 
 
+def test_validation_does_not_create_request_or_response_event(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "src.backend.function_logic.pipeline_api_manager.call",
+        lambda *a, **kw: calls.append(("pipeline", a, kw)),
+    )
+    monkeypatch.setattr(
+        "src.backend.function_logic.orchestrator_api_manager.call",
+        lambda *a, **kw: calls.append(("orchestrator", a, kw)),
+    )
+    args = valid_args()
+    args["fields"] = []
+
+    with pytest.raises(RequestValidationError, match="fields array cannot be empty"):
+        FunctionBackend(event(args)).process_request()
+
+    assert calls == []
+
+
 def test_selection_needs_options_and_condition_is_validated():
     args = valid_args()
     args["fields"][0]["options"] = []
