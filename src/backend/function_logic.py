@@ -7,6 +7,7 @@ import logging
 from typing import Any
 
 from api.pipeline_requests import pipeline_api_manager
+from api.orchestrator_requests import orchestrator_api_manager
 from chask_foundation.backend.models import OrchestrationEvent
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,7 @@ class RequestValidationError(ValueError):
 class FunctionBackend:
     def __init__(self, orchestration_event: OrchestrationEvent):
         self.orchestration_event = orchestration_event
+        self.response_event_sent = False
 
     def process_request(self) -> str:
         args = self._extract_tool_args()
@@ -40,7 +42,56 @@ class FunctionBackend:
         )
         if not isinstance(response, dict):
             raise RuntimeError("runtime required-data API returned a non-object response")
+        self._send_response_event(json.dumps(response, ensure_ascii=False))
         return json.dumps(response, ensure_ascii=False)
+
+    def _send_response_event(self, message: str) -> bool:
+        """Persist and publish the canonical function-call response child event."""
+        event = self.orchestration_event
+        tool_call = self._first_tool_call()
+        extra_params = {
+            "tool_call_id": tool_call.get("id"),
+            "tool_name": tool_call.get("name"),
+            "is_error": False,
+            "original_source": "agent",
+        }
+        try:
+            evolved = orchestrator_api_manager.call(
+                "evolve_event",
+                parent_event_uuid=str(event.event_id),
+                event_type="function_call_response",
+                source="agent",
+                target="orchestrator",
+                prompt=message,
+                extra_params=extra_params,
+                access_token=event.access_token,
+                organization_id=event.organization.organization_id,
+            )
+            if evolved.get("status_code") not in (200, 201):
+                raise RuntimeError(evolved.get("error", "failed to evolve response event"))
+            evolved_uuid = evolved.get("uuid")
+            if not evolved_uuid:
+                raise RuntimeError("API response missing uuid for evolved event")
+
+            response_event = event.model_copy(deep=True)
+            response_event.event_id = evolved_uuid
+            response_event.event_type = "function_call_response"
+            response_event.source = "agent"
+            response_event.target = "orchestrator"
+            response_event.prompt = message
+            response_event.extra_params = evolved.get("extra_params", extra_params)
+            orchestrator_api_manager.call(
+                "forward_oe_to_kafka",
+                orchestration_event=response_event.model_dump(),
+                topic="orchestrator",
+                access_token=response_event.access_token,
+                organization_id=response_event.organization.organization_id,
+            )
+            self.response_event_sent = True
+            return True
+        except Exception:
+            logger.exception("Failed to send function_call_response event")
+            return False
 
     def _build_payload(self, args: dict[str, Any]) -> dict[str, Any]:
         event = self.orchestration_event

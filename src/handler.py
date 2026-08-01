@@ -14,5 +14,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         body = event["body"]
         event = json.loads(body) if isinstance(body, str) else body
     orchestration_event = OrchestrationEvent.model_validate(event["orchestration_event"])
-    result = FunctionBackend(orchestration_event).process_request()
-    return {"statusCode": 200, "body": {"status": "ok", "result": {"message": result}}}
+    backend = FunctionBackend(orchestration_event)
+    result = backend.process_request()
+    return {
+        "statusCode": 200,
+        "body": {
+            "status": "ok",
+            "result": {"message": result},
+            "response_event_sent": backend.response_event_sent,
+        },
+    }
