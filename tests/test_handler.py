@@ -11,12 +11,23 @@ def _install_handler_import_stubs(monkeypatch):
     """Load the infrastructure handler without requiring Lambda layers locally."""
     pipeline_requests = types.ModuleType("api.pipeline_requests")
     pipeline_requests.pipeline_api_manager = SimpleNamespace(call=None)
+    orchestrator_requests = types.ModuleType("api.orchestrator_requests")
+    orchestrator_requests.orchestrator_api_manager = SimpleNamespace(call=None)
     api_package = types.ModuleType("api")
     api_package.pipeline_requests = pipeline_requests
+    api_package.orchestrator_requests = orchestrator_requests
     monkeypatch.setitem(sys.modules, "api", api_package)
     monkeypatch.setitem(sys.modules, "api.pipeline_requests", pipeline_requests)
+    monkeypatch.setitem(sys.modules, "api.orchestrator_requests", orchestrator_requests)
 
     models = types.ModuleType("chask_foundation.backend.models")
+
+    class Event(SimpleNamespace):
+        def model_copy(self, deep=True):
+            return Event(**self.__dict__)
+
+        def model_dump(self):
+            return dict(self.__dict__)
 
     class ValidatedEvent:
         @classmethod
@@ -30,7 +41,7 @@ def _install_handler_import_stubs(monkeypatch):
             organization = value["organization"]
             if not isinstance(organization, dict) or not organization.get("organization_id"):
                 raise ValueError("organization.organization_id is required")
-            return SimpleNamespace(
+            return Event(
                 orchestration_session_uuid=value["orchestration_session_uuid"],
                 event_id=value["event_id"],
                 pipeline_id=value.get("pipeline_id"),
@@ -89,13 +100,21 @@ def valid_event():
 @pytest.mark.parametrize("event_factory", [lambda event: json.dumps(event), lambda event: {"body": json.dumps(event)}])
 def test_lambda_handler_accepts_string_and_json_body(monkeypatch, event_factory):
     handler = _install_handler_import_stubs(monkeypatch)
-    monkeypatch.setattr(handler.FunctionBackend, "process_request", lambda self: '{"request_uuid":"req-1"}')
+    def process_request(self):
+        self.response_event_sent = True
+        return '{"request_uuid":"req-1"}'
+
+    monkeypatch.setattr(handler.FunctionBackend, "process_request", process_request)
 
     response = handler.lambda_handler(event_factory({"orchestration_event": valid_event()}), None)
 
     assert response == {
         "statusCode": 200,
-        "body": {"status": "ok", "result": {"message": '{"request_uuid":"req-1"}'}},
+        "body": {
+            "status": "ok",
+            "result": {"message": '{"request_uuid":"req-1"}'},
+            "response_event_sent": True,
+        },
     }
 
 
