@@ -232,11 +232,18 @@ class FunctionBackend:
 
     @staticmethod
     def _mapping(value: Any, name: str, index: int) -> dict[str, Any]:
-        if value is None:
+        if value is None or value == "":
             return {}
-        if not isinstance(value, dict):
-            raise RequestValidationError(f"fields[{index}].{name} must be an object")
-        return dict(value)
+        if isinstance(value, dict):
+            return dict(value)
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return {"review_prompt": value}
+            if isinstance(parsed, dict):
+                return parsed
+        raise RequestValidationError(f"fields[{index}].{name} must be an object")
 
     def _first_tool_call(self) -> dict[str, Any]:
         calls = (self.orchestration_event.extra_params or {}).get("tool_calls") or []
