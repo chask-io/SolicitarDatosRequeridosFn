@@ -133,6 +133,34 @@ def test_selection_needs_options_and_condition_is_validated():
         FunctionBackend(event(args))._build_payload(args)
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, {}),
+        ("", {}),
+        ({"review_prompt": "Use replace"}, {"review_prompt": "Use replace"}),
+        ('{"review_prompt": "Use replace"}', {"review_prompt": "Use replace"}),
+        ("Use replace", {"review_prompt": "Use replace"}),
+    ],
+)
+def test_validation_hints_accepts_legacy_and_compatibility_values(value, expected):
+    args = valid_args()
+    args["fields"][0]["validation_hints"] = value
+
+    payload = FunctionBackend(event(args))._build_payload(args)
+
+    assert payload["fields"][0]["validation_hints"] == expected
+
+
+@pytest.mark.parametrize("value", ["[]", "1", "true", "null", [], 1, True])
+def test_validation_hints_rejects_non_object_values(value):
+    args = valid_args()
+    args["fields"][0]["validation_hints"] = value
+
+    with pytest.raises(RequestValidationError, match="validation_hints must be an object"):
+        FunctionBackend(event(args))._build_payload(args)
+
+
 def test_process_request_calls_existing_endpoint(monkeypatch):
     calls = []
     monkeypatch.setattr("src.backend.function_logic.pipeline_api_manager.call", lambda *a, **kw: calls.append((a, kw)) or {"request": {"required_data_request_uuid": "req-1"}})
