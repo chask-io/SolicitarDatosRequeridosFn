@@ -42,8 +42,70 @@ class FunctionBackend:
         )
         if not isinstance(response, dict):
             raise RuntimeError("runtime required-data API returned a non-object response")
-        self._send_response_event(json.dumps(response, ensure_ascii=False))
-        return json.dumps(response, ensure_ascii=False)
+        agent_response = self._build_agent_response(response, payload)
+        message = json.dumps(agent_response, ensure_ascii=False)
+        self._send_response_event(message)
+        return message
+
+    def _build_agent_response(
+        self,
+        response: dict[str, Any],
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Return only the actionable collection contract to the calling agent."""
+        request = response.get("request") if isinstance(response.get("request"), dict) else {}
+        form = response.get("form") if isinstance(response.get("form"), dict) else {}
+        fields = self._actionable_fields(form)
+        field_ids = [field["field_id"] for field in fields]
+        return {
+            "status": form.get("status") or request.get("status") or "collecting",
+            "required_data_request_uuid": request.get("required_data_request_uuid"),
+            "pipeline_id": request.get("pipeline_id") or payload["pipeline_id"],
+            "reason": request.get("reason") or payload["reason"],
+            "instruction": (
+                "Solicita al usuario únicamente los campos listados en fields. "
+                "Menciona literalmente cada field_id y sus allowed_values cuando existan. "
+                "No traduzcas, renombres, inventes ni elijas valores por el usuario. "
+                "Cuando el usuario responda, llama a SendPipelineDataFn con data usando "
+                "exactamente esos field_id y los valores recibidos."
+            ),
+            "fields": fields,
+            "accepted_field_ids": sorted((form.get("accepted") or {}).keys()),
+            "submission": {
+                "tool": "SendPipelineDataFn",
+                "data_keys": field_ids,
+                "data_shape": {field_id: "<valor exacto del usuario>" for field_id in field_ids},
+            },
+        }
+
+    def _actionable_fields(self, form: dict[str, Any]) -> list[dict[str, Any]]:
+        candidates = []
+        for key in ("missing", "invalid"):
+            values = form.get(key)
+            if isinstance(values, list):
+                candidates.extend(item for item in values if isinstance(item, dict))
+        if not candidates and isinstance(form.get("fields"), list):
+            candidates = [item for item in form["fields"] if isinstance(item, dict)]
+
+        unique: dict[str, dict[str, Any]] = {}
+        for field in candidates:
+            field_id = field.get("field_id")
+            if isinstance(field_id, str) and field_id and field_id not in unique:
+                unique[field_id] = self._agent_field(field)
+        return list(unique.values())
+
+    @staticmethod
+    def _agent_field(field: dict[str, Any]) -> dict[str, Any]:
+        options = field.get("options") if isinstance(field.get("options"), list) else []
+        return {
+            "field_id": field["field_id"],
+            "label": field.get("label") or field["field_id"],
+            "type": field.get("type"),
+            "required": bool(field.get("required")),
+            "question": field.get("question") or f"Por favor proporciona {field['field_id']}.",
+            "allowed_values": options,
+            "example": field.get("example"),
+        }
 
     def _send_response_event(self, message: str) -> bool:
         """Persist and publish the canonical function-call response child event."""
