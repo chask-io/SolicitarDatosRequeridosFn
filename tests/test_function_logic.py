@@ -163,7 +163,33 @@ def test_validation_hints_rejects_non_object_values(value):
 
 def test_process_request_calls_existing_endpoint(monkeypatch):
     calls = []
-    monkeypatch.setattr("src.backend.function_logic.pipeline_api_manager.call", lambda *a, **kw: calls.append((a, kw)) or {"request": {"required_data_request_uuid": "req-1"}})
+    api_response = {
+        "request": {
+            "required_data_request_uuid": "req-1",
+            "pipeline_id": 11233,
+            "status": "collecting",
+            "reason": "SKU inválido",
+        },
+        "form": {
+            "status": "needs_input",
+            "accepted": {"sku_2": "sku2"},
+            "missing": [{
+                "field_id": "sku_resolution",
+                "label": "Reemplazo",
+                "type": "seleccion",
+                "required": True,
+                "question": "Elige la resolución exacta.",
+                "options": ["sku3a", "sku3b", "remover"],
+                "example": None,
+            }],
+        },
+        "event": {"extra_params": {"_simulation": {"large": "internal"}}},
+        "session_transition": {"from": "executing_pipeline", "to": "collecting_pipeline_data"},
+    }
+    monkeypatch.setattr(
+        "src.backend.function_logic.pipeline_api_manager.call",
+        lambda *a, **kw: calls.append((a, kw)) or api_response,
+    )
     response_calls = []
     monkeypatch.setattr(
         "src.backend.function_logic.orchestrator_api_manager.call",
@@ -175,7 +201,37 @@ def test_process_request_calls_existing_endpoint(monkeypatch):
     simulation = {"is_simulation": True, "scenario_id": "scenario-1", "run_id": "run-1"}
     backend = FunctionBackend(event(valid_args(), simulation=simulation))
     result = backend.process_request()
-    assert json.loads(result)["request"]["required_data_request_uuid"] == "req-1"
+    agent_response = json.loads(result)
+    assert agent_response == {
+        "status": "needs_input",
+        "required_data_request_uuid": "req-1",
+        "pipeline_id": 11233,
+        "reason": "SKU inválido",
+        "instruction": (
+            "Solicita al usuario únicamente los campos listados en fields. "
+            "Menciona literalmente cada field_id y sus allowed_values cuando existan. "
+            "No traduzcas, renombres, inventes ni elijas valores por el usuario. "
+            "Cuando el usuario responda, llama a SendPipelineDataFn con data usando "
+            "exactamente esos field_id y los valores recibidos."
+        ),
+        "fields": [{
+            "field_id": "sku_resolution",
+            "label": "Reemplazo",
+            "type": "seleccion",
+            "required": True,
+            "question": "Elige la resolución exacta.",
+            "allowed_values": ["sku3a", "sku3b", "remover"],
+            "example": None,
+        }],
+        "accepted_field_ids": ["sku_2"],
+        "submission": {
+            "tool": "SendPipelineDataFn",
+            "data_keys": ["sku_resolution"],
+            "data_shape": {"sku_resolution": "<valor exacto del usuario>"},
+        },
+    }
+    assert "event" not in agent_response
+    assert "session_transition" not in agent_response
     assert backend.response_event_sent is True
     assert len(calls) == 1
     assert calls[0][0] == ("create_runtime_required_data_request",)
@@ -215,5 +271,6 @@ def test_process_request_calls_existing_endpoint(monkeypatch):
         "is_error": False,
         "original_source": "agent",
     }
+    assert json.loads(response_calls[0][1]["prompt"]) == agent_response
     assert response_calls[1][0] == ("forward_oe_to_kafka",)
     assert response_calls[1][1]["orchestration_event"]["event_type"] == "function_call_response"
